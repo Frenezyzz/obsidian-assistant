@@ -70,12 +70,16 @@ def load_documents() -> list[Document]:
             skipped.append(str(fp))
             continue
 
+        relative_path = fp.relative_to(vault)
+
         docs.append(
             Document(
                 page_content=text,
                 metadata={
                     "source": str(fp),
+                    "relative_path": str(relative_path),
                     "filename": fp.name,
+                    "folder": str(relative_path.parent),
                 },
             )
         )
@@ -124,8 +128,10 @@ def split_documents(docs: list[Document]) -> list[Document]:
                 continue
 
             section_metadata = {
-                "source": source,
-                "filename": filename,
+                "source": doc.metadata.get("source", "Unknown source"),
+                "relative_path": doc.metadata.get("relative_path", "Unknown path"),
+                "filename": doc.metadata.get("filename", "Unknown file"),
+                "folder": doc.metadata.get("folder", ""),
             }
 
             section_metadata.update(section.metadata)

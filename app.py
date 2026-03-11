@@ -136,7 +136,8 @@ def retrieve_documents(db, llm, question, folder_filter=None, source_language_hi
         filtered_results = [
             (doc, score)
             for doc, score in filtered_results
-            if folder_filter in doc.metadata.get("source", "").lower()
+            if folder_filter in doc.metadata.get("folder", "").lower()
+            or folder_filter in doc.metadata.get("relative_path", "").lower()
         ]
 
     filtered_results.sort(key=lambda x: x[1], reverse=True)
@@ -183,7 +184,7 @@ Question:
     return answer, docs, results, queries_used
 
 def format_source(doc):
-    source = doc.metadata.get("source", "Unknown source")
+    relative_path = doc.metadata.get("relative_path") or doc.metadata.get("source", "Unknown source")
     h1 = doc.metadata.get("h1")
     h2 = doc.metadata.get("h2")
     h3 = doc.metadata.get("h3")
@@ -191,9 +192,9 @@ def format_source(doc):
     headings = [h for h in [h1, h2, h3] if h]
 
     if headings:
-        return f"{source} | {' > '.join(headings)}"
+        return f"{relative_path} | {' > '.join(headings)}"
 
-    return source
+    return relative_path
 
 def extract_sources(docs):
     unique_sources = list(
