@@ -144,7 +144,38 @@ def retrieve_documents(db, llm, question, folder_filter=None, source_language_hi
 
     return filtered_results[:TOP_K], queries
 
-def ask_question(db, llm, question, folder_filter=None, source_language_hint=None):
+def get_mode_instructions(study_mode):
+    if study_mode == "summary":
+        return """
+- Give a concise study summary.
+- Use short paragraphs or bullet points if helpful.
+- Focus only on the most important ideas.
+"""
+
+    if study_mode == "quiz":
+        return """
+- Do not give a direct explanatory answer.
+- Create 5 study questions based only on the provided context.
+- Questions should help the user test understanding.
+- Do not include answers unless explicitly asked.
+"""
+
+    if study_mode == "flashcards":
+        return """
+- Create 5 flashcards based only on the provided context.
+- Format each flashcard like this:
+  Q: ...
+  A: ...
+- Keep each answer short, clear, and study-friendly.
+"""
+
+    return """
+- Answer the user's question clearly and concisely.
+- If possible, summarize the answer in a useful study-friendly way.
+"""
+
+def ask_question(db, llm, question, folder_filter=None, source_language_hint=None, study_mode="normal"):
+    mode_instructions = get_mode_instructions(study_mode)
     results, queries_used = retrieve_documents(
         db=db,
         llm=llm,
@@ -168,8 +199,7 @@ Rules:
 - If the answer is not clearly supported by the context, reply exactly:
 Not found in your vault.
 - Answer in the same language as the user's question.
-- Be clear and concise.
-- If possible, summarize the answer in a useful study-friendly way.
+{mode_instructions}
 
 Context:
 {context}
@@ -231,9 +261,17 @@ def main():
 
         if not question:
             continue
-
+        
         folder_filter = input("Folder filter (optional): ").strip()
         source_language_hint = input("Source language hint (optional: en/es): ").strip()
+        print("Available study modes:")
+        print("- normal")
+        print("- summary")
+        print("- quiz")
+        print("- flashcards\n")
+        study_mode = input("Study mode (normal/summary/quiz/flashcards): ").strip().lower()
+        if not study_mode:
+            study_mode = "normal"
         
 
 
@@ -242,7 +280,8 @@ def main():
             llm,
             question,
             folder_filter=folder_filter,
-            source_language_hint=source_language_hint
+            source_language_hint=source_language_hint,
+            study_mode=study_mode
         )
         sources = extract_sources(docs)
 
