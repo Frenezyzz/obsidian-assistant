@@ -3,12 +3,16 @@ from collections import OrderedDict
 from langchain_community.vectorstores import Chroma
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 
+import json
+from datetime import datetime
+from pathlib import Path
 
 PERSIST_DIR = "data"
 EMBED_MODEL = "nomic-embed-text"
 CHAT_MODEL = "llama3.1:8b"   # you can change this later
 TOP_K = 5
 MIN_RELEVANCE_SCORE = 0.55
+HISTORY_FILE = "history.json"
 
 
 def load_vectorstore():
@@ -159,7 +163,19 @@ def get_mode_instructions(study_mode):
 - Questions should help the user test understanding.
 - Do not include answers unless explicitly asked.
 """
-
+    if study_mode == "folder_quiz":
+        return """
+- Create a study quiz using ALL the provided context.
+- Generate 10 varied study questions.
+- Mix concepts from different notes if relevant.
+- Include:
+  - short answer questions
+  - conceptual questions
+  - true/false
+  - multiple choice
+- Do NOT include the answers.
+- Make the quiz feel like a real exam review.
+"""
     if study_mode == "flashcards":
         return """
 - Create 5 flashcards based only on the provided context.
@@ -235,6 +251,27 @@ def extract_sources(docs):
     )
     return unique_sources
 
+def save_history(question, study_mode, answer, sources):
+    entry = {
+        "timestamp": datetime.now().isoformat(),
+        "question": question,
+        "study_mode": study_mode,
+        "answer": answer,
+        "sources": sources
+    }
+
+    history_path = Path(HISTORY_FILE)
+
+    if history_path.exists():
+        with open(history_path, "r", encoding="utf-8") as f:
+            history = json.load(f)
+    else:
+        history = []
+
+    history.append(entry)
+
+    with open(history_path, "w", encoding="utf-8") as f:
+        json.dump(history, f, ensure_ascii=False, indent=2)
 
 def main():
     print("Loading vector database...")
@@ -253,27 +290,46 @@ def main():
     print("- Leave empty to search the whole vault\n")
 
     while True:
-        question = input("Ask a question: ").strip()
-
-        if question.lower() in {"exit", "quit", "salir"}:
-            print("Goodbye.")
-            break
-
-        if not question:
-            continue
-        
-        folder_filter = input("Folder filter (optional): ").strip()
-        source_language_hint = input("Source language hint (optional: en/es): ").strip()
         print("Available study modes:")
         print("- normal")
         print("- summary")
         print("- quiz")
-        print("- flashcards\n")
-        study_mode = input("Study mode (normal/summary/quiz/flashcards): ").strip().lower()
+        print("- flashcards")
+        print("- folder_quiz\n")
+
+        study_mode = input(
+            "Study mode (normal/summary/quiz/flashcards/folder_quiz): "
+        ).strip().lower()
+
         if not study_mode:
             study_mode = "normal"
-        
 
+        if study_mode == "folder_quiz":
+
+            folder_filter = input(
+                "Folder for quiz generation: "
+            ).strip()
+
+            question = f"""
+        Generate a complete study quiz using ALL the notes
+        from the folder: {folder_filter}
+        """.strip()
+
+        else:
+            question = input("Ask a question: ").strip()
+
+            if question.lower() in {"exit", "quit", "salir"}:
+                print("Goodbye.")
+                break
+
+            if not question:
+                continue
+
+            folder_filter = input("Folder filter (optional): ").strip()
+        
+        source_language_hint = input(
+            "Source language hint (optional: en/es): "
+        ).strip()
 
         answer, docs, results, queries_used = ask_question(
             db,
@@ -304,6 +360,12 @@ def main():
             src = format_source(doc)
             print(f"- {score:.3f} | {src}")
 
+        save_history(
+            question=question,
+            study_mode=study_mode,
+            answer=answer,
+            sources=sources
+        )
         print("\n" + "=" * 80 + "\n")
 
 
