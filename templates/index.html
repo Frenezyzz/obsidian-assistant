@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Obsidian Assistant</title>
+    <link rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div class="app">
+
+        <aside class="sidebar">
+
+            <h2>Obsidian AI</h2>
+
+            <p class="sidebar-subtitle">
+                Your university study assistant
+            </p>
+
+        </aside>
+
+        <main class="main-content">
+
+            <div class="chat-card">
+
+                <h1>Ask your notes</h1>
+
+                <form method="POST">
+
+                    <input
+                        type="text"
+                        name="question"
+                        placeholder="Ask something..."
+                        class="question-input"
+                    >
+
+                    <div class="filters">
+
+                        <select id="category">
+                            <option value="">Category</option>
+
+                            {% for category in folder_structure.keys() %}
+                                <option value="{{ category }}">
+                                    {{ category }}
+                                </option>
+                            {% endfor %}
+                        </select>
+
+                        <select name="folder_filter" id="subfolder">
+                            <option value="">Subfolder</option>
+                        </select>
+
+                        <select name="source_language_hint">
+                            <option value="">Language</option>
+                            <option value="es">Spanish</option>
+                            <option value="en">English</option>
+                        </select>
+
+                        <select name="study_mode">
+                            <option value="normal">Normal</option>
+                            <option value="summary">Summary</option>
+                            <option value="quiz">Quiz</option>
+                            <option value="flashcards">Flashcards</option>
+                            <option value="folder_quiz">Folder Quiz</option>
+                        </select>
+
+                    </div>
+
+                    <button type="submit">
+                        Ask AI
+                    </button>
+
+                </form>
+
+            </div>
+
+            {% if answer %}
+
+            <div class="response-card">
+
+                <h2>Answer</h2>
+
+                <div class="answer-content">
+                    {{ answer|safe }}
+                </div>
+
+                <h3>Sources</h3>
+
+                <ul>
+                    {% for source in sources %}
+                        <li>{{ source }}</li>
+                    {% endfor %}
+                </ul>
+
+            </div>
+
+            {% endif %}
+
+        </main>
+
+    </div>
+
+
+    <script>
+
+        const folderStructure = {{ folder_structure|tojson }};
+
+        const categorySelect = document.getElementById("category");
+        const subfolderSelect = document.getElementById("subfolder");
+
+        categorySelect.addEventListener("change", () => {
+
+            const selectedCategory = categorySelect.value;
+
+            subfolderSelect.innerHTML =
+                '<option value="">Select subfolder</option>';
+
+            if (!selectedCategory) return;
+
+            const subfolders = folderStructure[selectedCategory];
+
+            for (const subfolder of subfolders) {
+
+                const option = document.createElement("option");
+
+                option.value =
+                    `${selectedCategory}\\${subfolder}`;
+
+                option.textContent = subfolder;
+
+                subfolderSelect.appendChild(option);
+            }
+        });
+
+    </script>
+</body>
+</html>
